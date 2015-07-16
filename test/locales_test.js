@@ -211,4 +211,4 @@ function onReady(isOk) {
 	}
 }
 
-init(main.LOCALES.EN, '../', onReady);
+init('EN', '../', onReady);

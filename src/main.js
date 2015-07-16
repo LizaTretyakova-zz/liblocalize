@@ -7,11 +7,27 @@ var isUndefOrNull = libutil.isUndefOrNull;
 
 var LOG_TAG = '[LIB_LOCALIZE]';
 
+
+/**
+ *@namespace
+ *@property {string} EN English locale.
+ *@property {string} RU Russian locale.
+ */
 var LOCALES = {
-    EN : 'en',
-    RU : 'ru'
+	EN : 'en',
+	RU : 'ru'
 };
 module.exports.LOCALES = LOCALES;
+
+/*
+ *in ru.json: the message with the key "player_autoplay_interval_header_before_input" shouldn't be empty, should it?
+ */
+
+/*module.exports.test = { preprocessMsg: preprocessMsg,
+ *						  preprocessDict: preprocessDict,
+ *						  interpolateString: interpolateString,
+ *						  DynStr: DynStr};
+ */
 
 var initialized = false;
 var localeFilesDirPath = null;
@@ -28,31 +44,35 @@ var SUBSTR_TYPE = {
 	"DYNAMIC_NO_WHITESPACE": '#$'
 };
 
+
+
 function DynStr(str, key, isDynamic, needsWhiteSpace) {
 	this.staticString = str;
 	this.key = key;
 	this.isDynamic = isDynamic;
 	this.needsWhiteSpace = needsWhiteSpace;
+}
 
-	this.setStaticString = function(str) {
+DynStr.prototype.setStaticString = function(str) {
 		this.staticString = str;
 		if(this.needsWhiteSpace) {
 			this.staticString += ' ';
 		}
 	}
 	
-	this.setKey = function(key) {
+DynStr.prototype.setKey = function(key) {
 		this.staticString = key;
 	}
 
-	this.toString = function() {
+DynStr.prototype.toString = function() {
 		return this.staticString;
 	}			
-}
+
+
 
 function isControl(char) {
 	for(var controlChar in CONTROL_SYMBOLS) {
-		if(char == controlChar) {
+		if(char === controlChar) {
 			return true;
 		}
 	}
@@ -61,7 +81,7 @@ function isControl(char) {
 
 function isEscaping(char) {
 	if(isControl(char)) {
-		return (CONTROL_SYMBOLS[char] == 'ESCAPING_SYMBOL');
+		return (CONTROL_SYMBOLS[char] === 'ESCAPING_SYMBOL');
 	}
 	return false;
 }
@@ -71,11 +91,7 @@ function isControlNotEsc(char) {
 }
 
 function controlSequenceEnded(nextChar, charPresence) {
-	if(isControlNotEsc(nextChar) && (!charPresence[nextChar])) {
-		charPresence[nextChar] = true;
-		return false;
-	}
-	return true;
+	return ((!isControlNotEsc(nextChar)) || charPresence[nextChar]);
 }
 
 function removeControlSymbols(str, index) {
@@ -83,7 +99,7 @@ function removeControlSymbols(str, index) {
 	return str.substring(index + i, str.length);
 }
 
-function getControlSymbols(charPresence) {
+function getStringType(charPresence) {
 	var res = '';
 	for(var char in CONTROL_SYMBOLS) {
 		if(isControlNotEsc(char) && charPresence[char]) {
@@ -97,26 +113,27 @@ function preprocessString(msgTemplate, substrIx) {
 	var charPresence = {'#': false, '$': false};
 	var curStr = msgTemplate[substrIx];
 	
-	for(var i = 0; i <= curStr.length; ++i) {
-		if(i == curStr.length) {
-			msgTemplate[substrIx] = '';
-			break;
-		}
+	for(var i = 0; i < curStr.length; ++i) {
 		var nextChar = curStr[i];
 		if(controlSequenceEnded(nextChar, charPresence)) {
 			msgTemplate[substrIx] = removeControlSymbols(curStr, i);
 			break;
 		}
+		charPresence[nextChar] = true;		
+	}
+
+	if(i === curStr.length) {
+		console.warn(LOG_TAG + ' dictionary template string should contain at least one non-control symbol');
+		console.warn(LOG_TAG + ' current string is ' + curStr + ' having index ' + substrIx + ' in template ' + msgTemplate);
+		msgTemplate[substrIx] = '';
+		return SUBSTR_TYPE["NOT_DYNAMIC_NO_WHITESPACE"];
 	}
 	
-	return getControlSymbols(charPresence);
+	return getStringType(charPresence);
 }
 
 function preprocessMsg(msgTemplate) {
 	for(var substrIx = 0; substrIx < msgTemplate.length; ++substrIx) {
-        // XXX I don't see any reason to call return value as state
-        // state is something that is preserved between different functions, workflows.
-        // You forgot about the state just after switch statement was complited.
 		switch(preprocessString(msgTemplate, substrIx)) {
 			case SUBSTR_TYPE["NOT_DYNAMIC_WITH_WHITESPACE"]:
 				msgTemplate[substrIx] = new DynStr(msgTemplate[substrIx] + ' ', '', false, false);
@@ -144,28 +161,18 @@ function preprocessDict() {
 	}
 }
 
-/** FOR TEST */
-// XXX please make single 'test' export here
-// module.exports.test = { preprocessMsg : preprocessMsg,
-//  preprocessDict : preprocessDict, ... };
-module.exports.test = { preprocessMsg: preprocessMsg,
-						preprocessDict: preprocessDict,
-						interpolateString: interpolateString,
-						DynStr: DynStr};
-/** *** **** */
 
 function interpolateString(msgTemplate, msgSubstrsDict) {
-    // TODO preprocess, don't create new [] and new substr key
-    // strings on each call
-    for (var substrIx = 0; substrIx < msgTemplate.length; ++substrIx) {
+	// TODO preprocess, don't create new [] and new substr key
+	// strings on each call
+	for (var substrIx = 0; substrIx < msgTemplate.length; ++substrIx) {
 		var substrTemplate = msgTemplate[substrIx];
-        if(substrTemplate.isDynamic) {
-        	substrTemplate.setStaticString(msgSubstrsDict[substrTemplate.key]); 
-            // XXX move [[]] things to dedicated vars with clear names
-        }
-    }
-    // TODO add support for explicit spacing between words
-    return msgTemplate.join('');
+		if(substrTemplate.isDynamic) {
+			substrTemplate.setStaticString(msgSubstrsDict[substrTemplate.key]); 
+		}
+	}
+	// TODO add support for explicit spacing between words
+	return msgTemplate.join('');
 }
 
 
@@ -174,11 +181,10 @@ function interpolateString(msgTemplate, msgSubstrsDict) {
 
 
 function getLocale(defLocaleName) {
-    // XXX What to do if locale we've got from browser don't fit into LOCALES enum?
 	var userLocale = (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
 	for(var locale in LOCALES) {
-		if(userLocale == LOCALES[locale]) {
-			return userLocale;//shouldn't we use LOCALES' key instead of userLocale?
+		if(userLocale === LOCALES[locale]) {
+			return locale;
 		}
 	}
 	console.log(LOG_TAG + ' user locale is ' + userLocale + ' and does not match any of supported locales.');
@@ -186,52 +192,64 @@ function getLocale(defLocaleName) {
 	return defLocaleName;//should we check whether this locale is correct or not?
 }
 
+/**
+ *@param {string} defLocaleName The default value; is used when the user's locale is not supported.
+ *@param {string} pLocaleFilesDirPath The path to a directory containing a dictionary.
+ *@param {function} onReady The callback which is called after the dictionary is loaded(or failed to load).
+ *@returns Void.
+ */
 function init(defLocaleName, pLocaleFilesDirPath, onReady/*(isOk)*/) {
-    localeFilesDirPath = pLocaleFilesDirPath;
-    var localeName = getLocale(defLocaleName);
+	localeFilesDirPath = pLocaleFilesDirPath;
+	var localeName = getLocale(defLocaleName);
 
-    // TODO detect browser locale and use it if it is available
-    // otherwise use default locale
-    	
-    loadLocaleDict(localeName, function(isOk, dict) {
-        userLocaleDict = dict;
-        initialized = isOk;
-        preprocessDict(userLocaleDict);
-        onReady(isOk);
-    });
+	// TODO detect browser locale and use it if it is available
+	// otherwise use default locale
+		
+	loadLocaleDict(LOCALES[localeName], function(isOk, dict) {
+		userLocaleDict = dict;
+		initialized = isOk;
+		preprocessDict(userLocaleDict);
+		onReady(isOk);
+	});
 }
 
 /*
  * msgSubstrsDict : { substringKey => substring }
  * returns corresponding message as string
  */
+ 
+ /**
+  *@param {string} msgKey The key to get a message template from the locale dictionary.
+  *@param {string} msgSubstrsDict The dictionary of strings to insert into the message template.
+  *@returns {string} The message with the substrings inserted.
+  */
 function get(msgKey, msgSubstrsDict) {
-    if (!initialized) {
-        console.warn(LOG_TAG, 'Use of uninitialized lib');
-        return '';
-    }
-    var msgTemplate = userLocaleDict[msgKey];
-    if (isUndefOrNull(msgTemplate)) {
-        console.warn(LOG_TAG, 'Use of not defined key', msgKey);
-        return '';
-    }
-    return interpolateString(msgTemplate, msgSubstrsDict);
+	if (!initialized) {
+		console.warn(LOG_TAG, 'Use of uninitialized lib');
+		return '';
+	}
+	var msgTemplate = userLocaleDict[msgKey];
+	if (isUndefOrNull(msgTemplate)) {
+		console.warn(LOG_TAG, 'Use of not defined key', msgKey);
+		return '';
+	}
+	return interpolateString(msgTemplate, msgSubstrsDict);
 }
 
 function loadLocaleDict(localeName, callback/*(isOk, dict)*/) {
-    // TODO use cross-platform file downloader (support nodejs)
-    jQuery.ajax({
-        type: 'GET',
+	// TODO use cross-platform file downloader (support nodejs)
+	jQuery.ajax({
+		type: 'GET',
 		dataType: 'json',
-        url: localeFilesDirPath + localeName + ".json",
-        success: onDictDownloaded.bind(null, true),
-        error : onDictDownloaded.bind(null, false)
-    });
+		url: localeFilesDirPath + localeName + ".json",
+		success: onDictDownloaded.bind(null, true),
+		error : onDictDownloaded.bind(null, false)
+	});
 
-    function onDictDownloaded(isOk, localeDict) {
-        if (!isOk) {
-            console.error(LOG_TAG, "Couldn't load locale dictionary", localeDict);
-        }
-        callback(isOk, localeDict);
-    }
+	function onDictDownloaded(err, localeDict) {
+		if (!err) {
+			console.error(LOG_TAG, "Couldn't load locale dictionary", localeDict);
+		}
+		callback(err, localeDict);
+	}
 }
