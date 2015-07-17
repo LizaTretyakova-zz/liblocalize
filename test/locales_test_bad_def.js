@@ -213,4 +213,4 @@ function onReady(isOk) {
 	}
 }
 
-init(main.LOCALES.EN, '../', onReady);
+init('pf', '../', onReady);
