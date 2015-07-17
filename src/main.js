@@ -1,9 +1,9 @@
 module.exports.init = init;
 module.exports.get = get;
 
-var libutil = require('libutil');
-var isNull = libutil.isNull;
-var isUndefOrNull = libutil.isUndefOrNull;
+//var libutil = require('libutil');
+//var isNull = libutil.isNull;
+//var isUndefOrNull = libutil.isUndefOrNull;
 
 var LOG_TAG = '[LIB_LOCALIZE]';
 
@@ -69,7 +69,7 @@ function get(msgKey, msgSubstrsDict) {
 		return '';
 	}
 	var msgTemplate = userLocaleDict[msgKey];
-	if (isUndefOrNull(msgTemplate)) {
+	if (!msgTemplate) {
 		console.warn(LOG_TAG, 'Use of not defined key', msgKey);
 		return '';
 	}
