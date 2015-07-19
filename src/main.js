@@ -1,10 +1,6 @@
 module.exports.init = init;
 module.exports.get = get;
 
-//var libutil = require('libutil');
-//var isNull = libutil.isNull;
-//var isUndefOrNull = libutil.isUndefOrNull;
-
 var LOG_TAG = '[LIB_LOCALIZE]';
 
 
@@ -25,30 +21,27 @@ module.exports.LOCALES = LOCALES;
  *@param {function} onReady The callback which is called after the dictionary is loaded(or failed to load).
  *@returns Void.
  */
-function init(defLocaleName, pLocaleFilesDirPath, onReady/*(isOk)*/) {
+function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
 	localeFilesDirPath = pLocaleFilesDirPath;
-	var localeName = getLocale(defLocaleName);
+	var localeName = getUserLocale(defLocaleName);
 
-	// TODO detect browser locale and use it if it is available
-	// otherwise use default locale
-		
-	loadLocaleDict(localeName, afterLoading/*(isOk, dict)*/);
+	loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 	
-	function afterLoading(isOk, dict) {
+	function afterLoading(err, dict) {
 		userLocaleDict = dict;
-		initialized = isOk;
-		if(isOk) {
+		initialized = !err;
+		if(!err) {
 			preprocessDict(userLocaleDict);
-			onReady(isOk);
+			onReady(err);
 		}
-		else if(!isOk && localeName !== defLocaleName) {
+		else if(err && localeName !== defLocaleName) {
 			console.warn(LOG_TAG, " user locale ", localeName, " is not supported. Trying to use the default locale ", defLocaleName);
 			localeName = defLocaleName;
-			loadLocaleDict(defLocaleName, afterLoading/*(isOk, dict)*/);
+			loadLocaleDict(defLocaleName, afterLoading/*(err, dict)*/);
 		}
 		else {
 			console.warn(LOG_TAG, " failed to load the default locale ", defLocaleName);
-			onReady(isOk);
+			onReady(err);
 		}
 	}
 }
@@ -76,37 +69,25 @@ function get(msgKey, msgSubstrsDict) {
 	return interpolateString(msgTemplate, msgSubstrsDict);
 }
 
-function getLocale(defLocaleName) {
+function getUserLocale(defLocaleName) {
 	return userLocale = (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
-/*	
-	for(var locale in LOCALES) {
-		if(userLocale === LOCALES[locale]) {
-			return locale;
-		}
-	}
-	console.log(LOG_TAG, ' user locale is ', userLocale, ' and does not match any of supported locales.');
-	console.log(LOG_TAG, ' using the default locale ', defLocaleName);
-	return defLocaleName;//should we check whether this locale is correct or not?
-*/
 }
 
-function loadLocaleDict(localeName, callback/*(isOk, dict)*/) {
+function loadLocaleDict(localeName, callback/*(err, dict)*/) {
 	// TODO use cross-platform file downloader (support nodejs)
 	jQuery.ajax({
 		type: 'GET',
 		dataType: 'json',
 		url: localeFilesDirPath + localeName + ".json",
-		success: onDictDownloaded.bind(null, true),
-		error : onDictDownloaded.bind(null, false)
+		success: onDictDownloaded.bind(null, false),//changed
+		error : onDictDownloaded.bind(null, true)//changed
 	});
-/*I can change 'isOk' to 'err' in the code below. But in this case I will have to change also binds above ^^^.
- *Should I change it? Should I also change 'isOk's in other parts of the library?
- */
-	function onDictDownloaded(isOk, localeDict) {
-		if (!isOk) {
+
+	function onDictDownloaded(err, localeDict) {
+		if (err) {
 			console.error(LOG_TAG, "Couldn't load locale dictionary", localeDict);
 		}
-		callback(isOk, localeDict);
+		callback(err, localeDict);
 	}
 }
 
@@ -118,8 +99,8 @@ var localeFilesDirPath = null;
 var userLocaleDict = null;
 
 var CONTROL_SYMBOLS = { '#': 'DYNAMIC',
-						'$': 'NO_WHITESPACE',
-						'~': 'ESCAPING_SYMBOL'
+                        '$': 'NO_WHITESPACE',
+                        '~': 'ESCAPING_SYMBOL'
 };
 var SUBSTR_TYPE = {
 	"NOT_DYNAMIC_WITH_WHITESPACE": '',
@@ -132,8 +113,8 @@ var SUBSTR_TYPE = {
 
 function DynStr(str, key, isDynamic, needsWhiteSpace) {
 	this._staticString = str;
-	this.key = key;				//is used outside of the class
-	this.isDynamic = isDynamic; //is used outside of the class (ctrl + F showed me this ^^)
+	this.key = key;				
+	this.isDynamic = isDynamic;
 	this._needsWhitespace = needsWhiteSpace;
 }
 
@@ -261,7 +242,7 @@ function interpolateString(msgTemplate, msgSubstrsDict) {
 
 
 module.exports.test = { preprocessMsg: preprocessMsg,
-						preprocessDict: preprocessDict,
-						interpolateString: interpolateString,
-						DynStr: DynStr
+                        preprocessDict: preprocessDict,
+                        interpolateString: interpolateString,
+                        DynStr: DynStr
 };

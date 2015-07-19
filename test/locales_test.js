@@ -205,8 +205,8 @@ var localeDictKeys = [
   "nodes_toolbar_create_hint_wait_and_go" 
 ];
 
-function onReady(isOk) {
-	if(isOk) {
+function onReady(err) {
+	if(!err) {
 		for(var i = 0; i < localeDictKeys.length; ++i) {
 			console.log(get(localeDictKeys[i], localeDictAnswers[localeDictKeys[i]]));
 		}
