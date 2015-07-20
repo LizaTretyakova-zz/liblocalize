@@ -70,7 +70,12 @@ function get(msgKey, msgSubstrsDict) {
 }
 
 function getUserLocale(defLocaleName) {
-	return userLocale = (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
+	var forceLang = localStorage.getItem('forceLang');
+	if(forceLang) {
+		console.log(LOG_TAG, " a forced locale ", forceLang, " is detected.");
+		return forceLang;
+	}
+	return (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
 }
 
 function loadLocaleDict(localeName, callback/*(err, dict)*/) {
@@ -114,7 +119,7 @@ var SUBSTR_TYPE = {
 function DynStr(str, key, isDynamic, needsWhiteSpace) {
 	this._staticString = str;
 	this.key = key;				
-	this.isDynamic = isDynamic;
+	this.isDynamic = isDynamic; 
 	this._needsWhitespace = needsWhiteSpace;
 }
 
