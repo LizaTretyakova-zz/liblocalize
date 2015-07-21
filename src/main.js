@@ -23,8 +23,8 @@ module.exports.LOCALES = LOCALES;
  */
 function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
 	localeFilesDirPath = pLocaleFilesDirPath;
-	var localeName = getUserLocale(defLocaleName);
-
+	var localeName = getUserLocale();
+	
 	loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 	
 	function afterLoading(err, dict) {
@@ -34,10 +34,15 @@ function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
 			preprocessDict(userLocaleDict);
 			onReady(err);
 		}
+		else if(err && isForcedLocale(localeName)) {
+			console.warn(LOG_TAG, " couldn't load forced locale ", localeName);
+			localeName = getBrowserLocale();
+			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
+		}
 		else if(err && localeName !== defLocaleName) {
 			console.warn(LOG_TAG, " user locale ", localeName, " is not supported. Trying to use the default locale ", defLocaleName);
 			localeName = defLocaleName;
-			loadLocaleDict(defLocaleName, afterLoading/*(err, dict)*/);
+			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 		}
 		else {
 			console.warn(LOG_TAG, " failed to load the default locale ", defLocaleName);
@@ -69,13 +74,21 @@ function get(msgKey, msgSubstrsDict) {
 	return interpolateString(msgTemplate, msgSubstrsDict);
 }
 
-function getUserLocale(defLocaleName) {
+function getUserLocale() {
 	var forceLang = localStorage.getItem('forceLang');
 	if(forceLang) {
 		console.log(LOG_TAG, " a forced locale ", forceLang, " is detected.");
 		return forceLang;
 	}
+	return getBrowserLocale();
+}
+
+function getBrowserLocale() {
 	return (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
+}
+
+function isForcedLocale(localeName) {
+	return (localeName == localStorage.getItem('forceLang'));
 }
 
 function loadLocaleDict(localeName, callback/*(err, dict)*/) {
