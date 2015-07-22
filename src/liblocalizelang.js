@@ -1,125 +1,11 @@
-module.exports.init = init;
-module.exports.get = get;
-
-var LOG_TAG = '[LIB_LOCALIZE]';
-
-
-/**
- *@namespace
- *@property {string} EN English locale.
- *@property {string} RU Russian locale.
- */
-var LOCALES = {
-	EN : 'en',
-	RU : 'ru'
-};
-module.exports.LOCALES = LOCALES;
-
-/**
- *@param {string} defLocaleName The default value; is used when the user's locale is not supported.
- *@param {string} pLocaleFilesDirPath The path to a directory containing a dictionary.
- *@param {function} onReady The callback which is called after the dictionary is loaded(or failed to load).
- *@returns Void.
- */
-function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
-	localeFilesDirPath = pLocaleFilesDirPath;
-	var localeName = getUserLocale();
-	
-	loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
-	
-	function afterLoading(err, dict) {
-		userLocaleDict = dict;
-		initialized = !err;
-		if(!err) {
-			preprocessDict(userLocaleDict);
-			onReady(err);
-		}
-		else if(err && isForcedLocale(localeName)) {
-			console.warn(LOG_TAG, " couldn't load forced locale ", localeName);
-			localeName = getBrowserLocale();
-			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
-		}
-		else if(err && localeName !== defLocaleName) {
-			console.warn(LOG_TAG, " user locale ", localeName, " is not supported. Trying to use the default locale ", defLocaleName);
-			localeName = defLocaleName;
-			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
-		}
-		else {
-			console.warn(LOG_TAG, " failed to load the default locale ", defLocaleName);
-			onReady(err);
-		}
-	}
-}
-
-/*
- * msgSubstrsDict : { substringKey => substring }
- * returns corresponding message as string
- */
- 
-/**
- *@param {string} msgKey The key to get a message template from the locale dictionary.
- *@param {string} msgSubstrsDict The dictionary of strings to insert into the message template.
- *@returns {string} The message with the substrings inserted.
- */
-function get(msgKey, msgSubstrsDict) {
-	if (!initialized) {
-		console.warn(LOG_TAG, 'Use of uninitialized lib');
-		return '';
-	}
-	var msgTemplate = userLocaleDict[msgKey];
-	if (!msgTemplate) {
-		console.warn(LOG_TAG, 'Use of not defined key', msgKey);
-		return '';
-	}
-	return interpolateString(msgTemplate, msgSubstrsDict);
-}
-
-function getUserLocale() {
-	var forceLang = localStorage.getItem('forceLang');
-	if(forceLang) {
-		console.log(LOG_TAG, " a forced locale ", forceLang, " is detected.");
-		return forceLang;
-	}
-	return getBrowserLocale();
-}
-
-function getBrowserLocale() {
-	return (window.navigator.language || window.navigator.browserLanguage).split('-')[0];
-}
-
-function isForcedLocale(localeName) {
-	return (localeName == localStorage.getItem('forceLang'));
-}
-
-function loadLocaleDict(localeName, callback/*(err, dict)*/) {
-	// TODO use cross-platform file downloader (support nodejs)
-	jQuery.ajax({
-		type: 'GET',
-		dataType: 'json',
-		url: localeFilesDirPath + localeName + ".json",
-		success: onDictDownloaded.bind(null, false),//changed
-		error : onDictDownloaded.bind(null, true)//changed
-	});
-
-	function onDictDownloaded(err, localeDict) {
-		if (err) {
-			console.error(LOG_TAG, "Couldn't load locale dictionary", localeDict);
-		}
-		callback(err, localeDict);
-	}
-}
-
-
-
-
-var initialized = false;
-var localeFilesDirPath = null;
-var userLocaleDict = null;
+module.exports.preprocessDict = preprocessDict;
+module.exports.interpolateString = interpolateString;
 
 var CONTROL_SYMBOLS = { '#': 'DYNAMIC',
                         '$': 'NO_WHITESPACE',
                         '~': 'ESCAPING_SYMBOL'
 };
+
 var SUBSTR_TYPE = {
 	"NOT_DYNAMIC_WITH_WHITESPACE": '',
 	"DYNAMIC_WITH_WHITESPACE": '#',
@@ -127,6 +13,7 @@ var SUBSTR_TYPE = {
 	"DYNAMIC_NO_WHITESPACE": '#$'
 };
 
+var LOG_TAG = '[LIB_LOCALIZE_LANG]';
 
 
 function DynStr(str, key, isDynamic, needsWhiteSpace) {
@@ -218,6 +105,7 @@ function preprocessString(msgTemplate, substrIx) {
 }
 
 function preprocessMsg(msgTemplate) {
+	//console.log("*in preprocessMsg* msgTemplate: ", msgTemplate);
 	for(var substrIx = 0; substrIx < msgTemplate.length; ++substrIx) {
 		switch(preprocessString(msgTemplate, substrIx)) {
 			case SUBSTR_TYPE["NOT_DYNAMIC_WITH_WHITESPACE"]:
@@ -236,11 +124,7 @@ function preprocessMsg(msgTemplate) {
 	}
 }
 
-function preprocessDict() {
-	if(!initialized) {
-		console.warn(LOG_TAG, 'dictionary is not initialized');
-		return;
-	}
+function preprocessDict(userLocaleDict) {
 	for(var i in userLocaleDict) {
 		preprocessMsg(userLocaleDict[i]);
 	}
@@ -258,9 +142,10 @@ function interpolateString(msgTemplate, msgSubstrsDict) {
 }
 
 
-
+/*
 module.exports.test = { preprocessMsg: preprocessMsg,
                         preprocessDict: preprocessDict,
                         interpolateString: interpolateString,
                         DynStr: DynStr
 };
+*/
