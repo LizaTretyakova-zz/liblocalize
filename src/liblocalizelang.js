@@ -105,7 +105,6 @@ function preprocessString(msgTemplate, substrIx) {
 }
 
 function preprocessMsg(msgTemplate) {
-	//console.log("*in preprocessMsg* msgTemplate: ", msgTemplate);
 	for(var substrIx = 0; substrIx < msgTemplate.length; ++substrIx) {
 		switch(preprocessString(msgTemplate, substrIx)) {
 			case SUBSTR_TYPE["NOT_DYNAMIC_WITH_WHITESPACE"]:

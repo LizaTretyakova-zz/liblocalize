@@ -1,16 +1,18 @@
 module.exports.init = init;
 module.exports.get = get;
 
-var lll = require('./liblocalizelang.js');
+var path = require('path');
+var lll = require('./liblocalizelang');
 var preprocessDict = lll.preprocessDict;
+var interpolateString = lll.interpolateString;
 var fs = require('fs');
 
-var initialized = {};
+var processed = {};//shows, which dictionaries were processed(successfully or not)
 var localeDicts = {};
 var localeDictsPath = null;
 
 var LOG_TAG = '[LIB_LOCALIZE_SERVER]';
-var defEncoding = 'utf-8';
+var DEF_ENCODING = 'utf-8';
 
 /**
  *@namespace
@@ -24,36 +26,42 @@ var LOCALES = {
 module.exports.LOCALES = LOCALES;
 
 /**
- *@param {Array} locales All locales to load
- *@param {string} pLocaleDictsPath The path to a directory containing dictionaries.
+ *@param {Object} options The object, containig three fields:
+ 							- locales: an array of all locales to load
+ 							- pLocaleDictsPath: the string which is a path to a directory containing dictionaries.
+ 							- pEncoding: [optional] the string which is the encoding of the given dictionaries.
  *@param {function} onReady The callback which is called after the dictionaries are loaded(or failed to load).
  *@returns Void. 
  */
-function init(locales, pLocaleDictsPath, pEncoding) {
-	localeDictsPath = pLocaleDictsPath;
-	for(var i in locales) {
-		var locale = locales[i];
-		var encoding = pEncoding ? pEncoding : defEncoding;
+function init(options, onReady/*(dicts)*/) {
+	localeDictsPath = options.pLocaleDictsPath;
+	var encoding = options.pEncoding ? options.pEncoding : DEF_ENCODING;
+	
+	for(var i in options.locales) {
+		var locale = options.locales[i];
 		
-		loadLocaleDict(locale, encoding, function (err, dict) {
-			initialized[locale] = !err;
+		loadLocaleDict(locale, encoding, function (curLocale, err, dict) {
+			processed[curLocale] = true;
 			if (err) {
-				console.error(LOG_TAG, "Couldn't load locale dictionary", dict);
-				localeDicts[locale] = null;
+				console.warn(LOG_TAG, "Couldn't load locale dictionary", dict);
+				localeDicts[curLocale] = null;
 			}
 			else {
 				try {
-					localeDicts[locale] = JSON.parse(dict);
+					localeDicts[curLocale] = JSON.parse(dict);
 				}
 				catch(exception) {
 					console.warn(LOG_TAG, " dictionary is not a correct .json-file");
-					localeDicts[locale] = null;
-					initialized[locale] = false;
+					localeDicts[curLocale] = null;
 					return;
 				}
 				
-				preprocessDict(localeDicts[locale]);
-			}			
+				preprocessDict(localeDicts[curLocale]);
+			}
+			
+			if(allDictsProcessed(options.locales)) {
+				onReady(localeDicts);
+			}		
 		});
 	}
 }
@@ -66,7 +74,7 @@ function init(locales, pLocaleDictsPath, pEncoding) {
  */
 function get(msgKey, msgSubstrsDict, locale) {
 	var localDict = localeDicts[locale];
-	if(!initialized[locale] || !localDict) {
+	if(!localDict) {
 		console.warn(LOG_TAG, 'Use of uninitialized dictionary');
 		return '';
 	}
@@ -80,8 +88,18 @@ function get(msgKey, msgSubstrsDict, locale) {
 	return interpolateString(msgTemplate, msgSubstrsDict);
 }
 
-function loadLocaleDict(locale, encoding, callback/*(err, dict)*/) {
-	var path = localeDictsPath + locale + ".json";
-	fs.readFile(path, encoding, callback);
+function loadLocaleDict(locale, encoding, callback/*(locale, err, dict)*/) {
+	var dictFilePath = path.join(localeDictsPath, locale + ".json");
+	fs.readFile(dictFilePath, encoding, callback.bind(null, locale));
+}
+
+function allDictsProcessed(locales) {
+	for(var i in locales) {
+		var locale = locales[i];
+		if(!processed[locale]) {
+			return false;
+		}
+	}
+	return true;
 }
 

@@ -205,18 +205,19 @@ var localeDictKeys = [
   "nodes_toolbar_create_hint_wait_and_go" 
 ];
 
-/*
-function onReady(initialized) {
+function onReady(dicts) {
 	for(var locale in lls.LOCALES) {
 		var curLocale = lls.LOCALES[locale];
-		if(initialized[curLocale]) {
+		if(dicts[curLocale]) {
 			for(var i = 0; i < localeDictKeys.length; ++i) {
 				var key = localeDictKeys[i];
-				console.log(get(key , localeDictAnswers[key], curLocale));
+				console.log(get(key, localeDictAnswers[key], curLocale));
 			}
 		}
 	}
 }
-*/
 
-init([lls.LOCALES['EN'], lls.LOCALES['RU']], '../../');
+init({locales: [lls.LOCALES['EN'], lls.LOCALES['RU']], 
+	  pLocaleDictsPath: '..'},
+		onReady);
+

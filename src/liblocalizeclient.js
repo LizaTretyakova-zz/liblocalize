@@ -1,7 +1,7 @@
 module.exports.init = init;
 module.exports.get = get;
 
-var lll = require('./liblocalizelang.js');
+var lll = require('./liblocalizelang');
 var preprocessDict = lll.preprocessDict;
 var interpolateString = lll.interpolateString;
 
@@ -31,7 +31,11 @@ module.exports.LOCALES = LOCALES;
  */
 function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
 	localeFilesDirPath = pLocaleFilesDirPath;
-	var localeName = getUserLocale();
+	var loadingState = {
+		triedForceLang: false,
+		triedUserLocale: false
+	};
+	var localeName = getUserLocale(defLocaleName, loadingState);
 	
 	loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 	
@@ -42,14 +46,14 @@ function init(defLocaleName, pLocaleFilesDirPath, onReady/*(err)*/) {
 			preprocessDict(userLocaleDict);
 			onReady(err);
 		}
-		else if(err && isForcedLocale(localeName)) {
+		else if(err && !loadingState.triedUserLocale) {
 			console.warn(LOG_TAG, " couldn't load forced locale ", localeName);
-			localeName = getBrowserLocale();
+			localeName = getUserLocale(defLocaleName, loadingState);
 			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 		}
 		else if(err && localeName !== defLocaleName) {
 			console.warn(LOG_TAG, " user locale ", localeName, " is not supported. Trying to use the default locale ", defLocaleName);
-			localeName = defLocaleName;
+			localeName = getUserLocale(defLocaleName, loadLocaleState);
 			loadLocaleDict(localeName, afterLoading/*(err, dict)*/);
 		}
 		else {
@@ -82,13 +86,22 @@ function get(msgKey, msgSubstrsDict) {
 	return interpolateString(msgTemplate, msgSubstrsDict);
 }
 
-function getUserLocale() {
-	var forceLang = localStorage.getItem('forceLang');
-	if(forceLang) {
-		console.log(LOG_TAG, " a forced locale ", forceLang, " is detected.");
-		return forceLang;
+function getUserLocale(defLocaleName, loadingState) {
+	if(!loadingState.triedForceLang) {
+		loadingState.triedForceLang = true;
+		var forceLang = localStorage.getItem('forceLang');
+		if(forceLang) {
+			console.log(LOG_TAG, " a forced locale ", forceLang, " is detected.");
+			return forceLang;
+		}
 	}
-	return getBrowserLocale();
+	
+	if(!loadingState.triedUserLocale) {
+		loadingState.triedUserLocale = true;
+		return getBrowserLocale();
+	}
+	
+	return defLocaleName;
 }
 
 function getBrowserLocale() {
@@ -100,7 +113,6 @@ function isForcedLocale(localeName) {
 }
 
 function loadLocaleDict(localeName, callback/*(err, dict)*/) {
-	// TODO use cross-platform file downloader (support nodejs)
 	jQuery.ajax({
 		type: 'GET',
 		dataType: 'json',
