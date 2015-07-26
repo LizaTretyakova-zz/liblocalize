@@ -1,4 +1,4 @@
-var llc = require('../src/liblocalizeclient.js');
+var llc = require('liblocalizeclient');
 var init = llc.init;
 var get = llc.get;
 
