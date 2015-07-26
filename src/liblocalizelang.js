@@ -79,7 +79,7 @@ function controlSequenceEnded(nextChar, charPresence) {
 }
 
 function removeControlSymbols(str, index) {
-    var i = isEscaping(str[i]) ? 1 : 0;
+    var i = isEscaping(str[index]) ? 1 : 0;
     return str.substring(index + i, str.length);
 }
 
