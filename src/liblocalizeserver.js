@@ -63,29 +63,30 @@ function init(options, onReady/*(dicts)*/) {
 /**
  *@param {string} msgKey The key to get a message template from the locale dictionary.
  *@param {string} msgSubstrsDict The dictionary of strings to insert into the message template.
- *@param {string} locale The locale of the dictionary which the message template should be got from.
+ *@param {string} options Parameter for the locale detecting. It may be either:
+ *                                                             -an http-request Accept-Language header
+ *                                                             -a locale name or a value from the LOCALES enum
+ *                                                             -a function accepting a name of a header 
+ *                                                                  and returning this header if exists
+ *                                                             -an oject where the field name(s) is the locale name(s)
  *@returns {string} The message with the substrings inserted.
  */
 
 function get(msgKey, msgSubstrsDict, options) {
     var locale = null;
     if(isAccLangHeader(options)) {
-//        console.log('header?');
         locale = getLocaleByHeader(options);
     }
     else if(isLocaleName(options)) {
-//        console.log('just locale name?');
         locale = getLocaleByName(options);
     }
     else if(options instanceof Function) {
-//        console.log('function?');    
         var header = options(ACC_LANG);
         if(header) {
             locale = getLocaleByHeader(header);
         }
     }
     else if(typeof options === 'object') {
-//        console.log('object?');        
         for(var field in options) {
             if(isLocaleName(field)) {
                 locale = getLocaleByName(field);

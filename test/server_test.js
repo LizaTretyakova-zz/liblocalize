@@ -1,4 +1,4 @@
-var lls = require('../src/liblocalizeserver.js');
+var lls = require('liblocalizeserver');
 var init = lls.init;
 var get = lls.get;
 
@@ -74,7 +74,7 @@ var localeDictAnswers = {
   "project_publisher_audio_progress" : {
     "secsCaptured": 18,
     "secsOverall": 42,
-	},
+    },
   "project_publisher_audio_finished" : {},
 
   "project_publisher_audio_video_av_merge_not_allowed" : {"avmErrorMsg": "Agh! Bird! Bird! Kill it! It's evil!"},
@@ -206,18 +206,90 @@ var localeDictKeys = [
 ];
 
 function onReady(dicts) {
-	for(var locale in lls.LOCALES) {
-		var curLocale = lls.LOCALES[locale];
-		if(dicts[curLocale]) {
-			for(var i = 0; i < localeDictKeys.length; ++i) {
-				var key = localeDictKeys[i];
-				console.log(get(key, localeDictAnswers[key], curLocale));
-			}
-		}
-	}
+    console.log("-----USING-PURE-LOCALE-NAMES-----");
+    for(var locale in lls.LOCALES) {
+        var curLocale = lls.LOCALES[locale];
+        if(dicts[curLocale]) {
+            for(var i = 0; i < localeDictKeys.length; ++i) {
+                var key = localeDictKeys[i];
+                console.log(get(key, localeDictAnswers[key], curLocale));
+            }
+        }
+        console.log("USING-ENUM-VALUES");
+        for(var i = 0; i < localeDictKeys.length; ++i) {
+            var key = localeDictKeys[i];
+            console.log(get(key, localeDictAnswers[key], locale));
+        }
+    }
+    
+    console.log("-----USING-ACCEPT-LANGUAGE-HEADER-----");
+    var pseudoHeader = "Accept-Language: da, ru, en-gb;q=0.8, en;q=0.7";
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.log(get(key, localeDictAnswers[key], pseudoHeader));
+    }
+    
+    console.log("-----USING-ENUM-----");
+    var localesEnum = {'da': -1, 'en': 0, 'RU': 1};
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.log(get(key, localeDictAnswers[key], localesEnum));
+    }
+    
+    console.log("-----USING-FUNCTION-----");
+    var getHeader = function(option) {
+        return pseudoHeader;
+    }
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.log(get(key, localeDictAnswers[key], getHeader));
+    }
+    
+    
+    console.warn("-----USING-BAD-PURE-LOCALE-NAMES-----");
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], 'da'));
+    }
+    console.warn("USING-BAD-ENUM-VALUES");
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], 'DA'));
+    }
+
+    
+    console.warn("-----USING-BAD-ACCEPT-LANGUAGE-HEADER-----");
+    var badHeader = "Accept-Language: da, ru, cs-gb;q=0.8, po;q=0.7";
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], badHeader));
+    }
+
+    console.warn("-----USING-VERY-BAD-ACCEPT-LANGUAGE-HEADER-----");
+    var badHeader = "Accept-Language: da, cs-gb;q=0.8, po;q=0.7";
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], badHeader));
+    }
+    
+    console.warn("-----USING-BAD-ENUM-----");
+    var badEnum = {'da': -1, 'po': 0, 'cs': 1};
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], badEnum));
+    }
+    
+    console.warn("-----USING-BAD-FUNCTION-----");
+    var getBadHeader = function(option) {
+        return badHeader;
+    }
+    for(var i = 0; i < localeDictKeys.length; ++i) {
+        var key = localeDictKeys[i];
+        console.warn(get(key, localeDictAnswers[key], getBadHeader));
+    }
 }
 
-init({locales: [lls.LOCALES['EN'], lls.LOCALES['RU']], 
-	  pLocaleDictsPath: '..'},
-		onReady);
+init({locales: [lls.LOCALES['EN'], lls.LOCALES['RU'], 'da'], 
+      localeDictsPath: '/home/liza/clilk/liblocalize/data/github/intcom-phaser/lib/liblocalize'},
+        onReady);
 
