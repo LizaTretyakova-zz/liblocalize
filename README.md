@@ -13,9 +13,9 @@ The function gets a dictionary in the following format: 'key' is a usual key to 
 is not the string but _the template_: an array of substrings, 
 which will be put together(perhaps with some data provided dynamically) when needed. 
 You may prefix these substrings with some control symbols to specify the way the library will put them together:
-- '$': there won't be a whitespace added after the substring
-- '#': the actual value of this substring will be provided dynamically
-- '~': the escaping symbol; the remaining substring after this character will be left as-is
+- **$**: there won't be a whitespace added after the substring
+- **#**: the actual value of this substring will be provided dynamically
+- **~**: the escaping symbol; the remaining substring after this character will be left as-is
 
 ### interpolateString(messageTemplate, dynamicSubstrings)
 
